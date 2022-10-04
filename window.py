@@ -1,5 +1,5 @@
 import tkinter as tk
-from calculate import get_center_of_gravity, random_color
+from calculate import get_center_of_gravity, random_color, calculate
 from PIL import Image, ImageTk
 import json
 import random
@@ -234,10 +234,13 @@ class Window(tk.Tk):
                     if det.name == query[1]:
                         ratio_str = query[2]
                         if '/' in ratio_str:
-                            a, b = map(int, ratio_str.split('/'))
+                            a, b = map(float, ratio_str.split('/'))
                             ratioa, ratiob = a/(a + b), b/(a + b)
                         else:
-                            ratioa, ratiob = float(ratio_str)/(float(ratio_str) + 1), 1/(float(ratio_str) + 1)
+                            if float(ratio_str) > det.length or float(ratio_str) < 0:
+                                print("Too much to cut or less than 0")
+                                return
+                            ratioa, ratiob = float(ratio_str) / det.length, (det.length - float(ratio_str)) / det.length
                         if len(query) > 3:
                             name1, name2 = query[3], query[4]
                         else:
@@ -250,3 +253,13 @@ class Window(tk.Tk):
                         break
                 else:
                     print("No detail with such name")
+            case "copy":
+                for det in self.details:
+                    if det.name == query[1]:
+                        self.run_query(("add", query[2], det.mass, det.length))
+                        self.run_query(("move_to", query[2], det.pos))
+                        break
+                else:
+                    print("No detail with this name")
+            case "calculate":
+                calculate(self.details)

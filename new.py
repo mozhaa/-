@@ -6,7 +6,9 @@ class Viewer(tk.Canvas):
         super().__init__(root, *args, **kwargs)
         self.details = list()
         self.root = root
+        self.scale = 50
 
+    def draw_detail()
 
 
 class Window()

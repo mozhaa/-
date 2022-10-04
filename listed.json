@@ -23,5 +23,45 @@
         "name": "AFT",
         "mass": "4.3",
         "length": "1.6"
+    },
+    {
+        "name": "reynoldsCap",
+        "mass": "1.32",
+        "length": "4.5"
+    },
+    {
+        "name": "signoTip",
+        "mass": "1.83",
+        "length": "1.5"
+    },
+    {
+        "name": "AFT",
+        "mass": "4.3",
+        "length": "1.6"
+    },
+    {
+        "name": "CTBarrel",
+        "mass": "2.75",
+        "length": "10.3"
+    },
+    {
+        "name": "SarasaGrip",
+        "mass": "1",
+        "length": "3.4"
+    },
+    {
+        "name": "signoTip",
+        "mass": "1.83",
+        "length": "1.5"
+    },
+    {
+        "name": "alphaGelTip",
+        "mass": "3.85",
+        "length": "1.5"
+    },
+    {
+        "name": "CTCap",
+        "mass": "1.71",
+        "length": "4.3"
     }
 ]
