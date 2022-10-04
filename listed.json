@@ -1,0 +1,27 @@
+[
+    {
+        "name": "DGG",
+        "mass": "4.3",
+        "length": "5.15"
+    },
+    {
+        "name": "CST",
+        "mass": "2.85",
+        "length": "10.7"
+    },
+    {
+        "name": "ComssaCap",
+        "mass": "1.12",
+        "length": "4.1"
+    },
+    {
+        "name": "AFG",
+        "mass": "3.05",
+        "length": "4.6"
+    },
+    {
+        "name": "AFT",
+        "mass": "4.3",
+        "length": "1.6"
+    }
+]

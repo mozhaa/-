@@ -1,4 +1,5 @@
 import numpy as np
+import random
 import math
 import pickle
 import sys
@@ -26,6 +27,10 @@ def get_center_of_gravity(details):
         total_mass += det.mass
         result += det.mass * (det.pos + det.length / 2)
     return result / total_mass
+
+
+def random_color():
+    return "#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
 
 
 def calculate(details):
