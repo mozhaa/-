@@ -3,6 +3,7 @@ import json
 import os
 import pickle
 import random
+import sys
 import tkinter as tk
 
 from PIL import Image, ImageTk
@@ -19,7 +20,7 @@ class Window(tk.Tk):
         self.doc = '''
     Commands:
         - help
-        - add <имя> <масса> <длина>
+        - add <имя> <масса> <длина> [цвет]
         - addlist <название> <имя>
         - move <имя> <изменение>
         - move_to <имя> <позиция>
@@ -36,6 +37,11 @@ class Window(tk.Tk):
         - calculate
         - save <название файла>
         - load <название файла>
+        - listed print
+        - listed show <название>
+        - listed save <имя> [название]
+        - listed remove <название>
+        - listed load <название> <имя> [цвет]
 '''
 
         self.colors = dict()
@@ -213,12 +219,15 @@ class Window(tk.Tk):
                         print('\t' + repr(obj))
 
                 case "save":
+                    loaded = [self.details, self.colors]
                     with open('files/' + query[1], "wb") as file:
-                        pickle.dump(self.details, file)
+                        pickle.dump(loaded, file)
 
                 case "load":
                     with open('files/' + query[1], "rb") as file:
-                        self.details = pickle.load(file)
+                        loaded = pickle.load(file)
+                    self.details = loaded[0]
+                    self.colors = loaded[1]
 
                 case "remove":
                     to_remove = query[1:]
@@ -333,6 +342,65 @@ class Window(tk.Tk):
                     if len(edges) == 2:
                         print("Distance =", abs(edges[0] - edges[1]))
 
+
+                case "listed":
+                    with open("listed.json", "r") as file:
+                        listed_details = json.load(file)
+                    if query[1] == "print":
+                        print("Details in listed.json:")
+                        for det in listed_details:
+                            print("\t", det["name"])
+                    if query[1] == "save":
+                        for det in self.details:
+                            if det.name == query[2]:
+                                if len(query) < 4:
+                                    name = query[2]
+                                else:
+                                    name = query[3]
+                                listed_details.append({
+                                    "name": name,
+                                    "mass": det.mass,
+                                    "length": det.length
+                                })
+                                with open("listed.json", "w") as file:
+                                    json.dump(listed_details, file)
+                                print(f'Added {det.name} to listed.json')
+                                break
+                        else:
+                            print("No detail with this name")
+                    if query[1] == "remove":
+                        for i, det in enumerate(listed_details):
+                            if det["name"].lower() == query[2].lower():
+                                listed_details.pop(i)
+                                with open("listed.json", "w") as file:
+                                    json.dump(listed_details, file)
+                                print(f'Removed {query[2]} from listed.json')
+                                break
+                        else:
+                            print("No detail with this name")
+                    if query[1] == "show":
+                        for i, det in enumerate(listed_details):
+                            if det["name"].lower() == query[2].lower():
+                                print(f'Detail:  Name: {det["name"]}, Mass: {det["mass"]}, Length: {det["length"]}')
+                                break
+                        else:
+                            print("No detail with this name")
+                    if query[1] == "load":
+                        for det in listed_details:
+                            if det["name"].lower() == query[2].lower():
+                                if len(query) > 4:
+                                    color = Window.parse_color(query[4])
+                                    if color != False:
+                                        self.run_query(("add", query[3], det["mass" ], det["length"], color))
+                                else:
+                                    self.run_query(("add", query[3], det["mass"], det["length"]))
+                                break
+                        else:
+                            print("No detail in listed file with this name")
+
+                case "exit":
+                    self.destroy()
+                    sys.exit(0)
 
         except IndexError:
             print("Not enough arguments")
