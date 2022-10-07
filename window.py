@@ -1,5 +1,6 @@
 import bisect
 import json
+import os
 import pickle
 import random
 import tkinter as tk
@@ -15,26 +16,27 @@ class Window(tk.Tk):
         super().__init__()
         self.title("model")
         self.details = list()
-        self.doc =     '''
-            Commands:
-                help
-                add <имя> <масса> <длина>
-                addlist <название> <имя>
-                move <имя> <изменение>
-                move_to <имя> <позиция>
-                rename <старое имя> <новое имя>
-                copy <имя1> <имя2>
-                edit <имя> <mass или length> <новое значение>
-                cut <имя> <длина или отношение> [имя1] [имя2]
-                select <имя>
-                deselect
-                remove <имя>
-                print <имя>
-                list
-                calculate
-                save <название файла>
-                load <название файла>
-            '''
+        self.doc = '''
+    Commands:
+        - help
+        - add <имя> <масса> <длина>
+        - addlist <название> <имя>
+        - move <имя> <изменение>
+        - move_to <имя> <позиция>
+        - rename <старое имя> <новое имя>
+        - copy <имя1> <имя2>
+        - edit <имя> <mass или length> <новое значение>
+        - cut <имя> <длина или отношение> [имя1] [имя2]
+        - select <имя>
+        - deselect
+        - remove <имя>
+        - print <имя>
+        - dist <l/r> <имя1> <l/r> <имя2>
+        - list
+        - calculate
+        - save <название файла>
+        - load <название файла>
+'''
 
         self.colors = dict()
         self.selected = None
@@ -43,16 +45,26 @@ class Window(tk.Tk):
         self.entry_text = tk.StringVar()
         self.entry = tk.Entry(self, textvariable=self.entry_text, width=100)
         self.entry.bind("<Return>", lambda *args: self.button_click())
+        self.entry.bind("<F1>", lambda *args: self.button.focus_set())
+        self.entry.bind("<FocusIn>", lambda *args: self.entry.config(background="white"))
+        self.entry.bind("<FocusOut>", lambda *args: self.entry.config(background="#EEEEEE"))
         self.entry.grid(row=0, column=0)
 
-        self.button = tk.Button(self, text="O", command=self.button_click)
+        self.button = tk.Button(self, text="O", command=self.button_click, background='#CCE5FF')
+        self.button.bind("<Left>", self.move_left)
+        self.button.bind("<a>", self.move_left)
+        self.button.bind("<Right>", self.move_right)
+        self.button.bind("<d>", self.move_right)
+        self.button.bind("<F1>", lambda *args: self.entry.focus_set())
+        self.button.bind("<FocusIn>", lambda *args: self.button.config(background='#3399FF'))
+        self.button.bind("<FocusOut>", lambda *args: self.button.config(background='#CCE5FF'))
         self.button.grid(row=0, column=1)
 
         self.canvas = tk.Canvas(self, width=600, height=400)
-        self.button.bind("<Left>", self.move_left)
-        self.button.bind("<Right>", self.move_right)
         self.canvas.grid(row=1, column=0, columnspan=2)
 
+        os.makedirs('files', exist_ok=True)
+        self.entry.focus_set()
         self.mainloop()
 
 
@@ -64,7 +76,7 @@ class Window(tk.Tk):
             if det.name != self.selected.name:
                 edges.extend([det.pos, det.pos + det.length, det.pos - self.selected.length, det.pos + det.length - self.selected.length])
         edges = sorted(list(set(edges)))
-        index = bisect.bisect_left(edges, self.selected.pos) - 1
+        index = bisect.bisect_left(edges, self.selected.pos - 0.000000000001) - 1
         if index == -1: return
         self.run_query(("move_to", self.selected.name, edges[index]))
         self.show_details()
@@ -77,7 +89,8 @@ class Window(tk.Tk):
             if det.name != self.selected.name:
                 edges.extend([det.pos, det.pos + det.length, det.pos + self.selected.length, det.pos + det.length + self.selected.length])
         edges = sorted(list(set(edges)))
-        index = bisect.bisect_right(edges, self.selected.pos + self.selected.length)
+        # print(edges, self.selected.pos + self.selected.length)
+        index = bisect.bisect_right(edges, self.selected.pos + self.selected.length + 0.000000000001)
         if index == len(edges): return
         self.run_query(("move_to", self.selected.name, edges[index] - self.selected.length))
         self.show_details()
@@ -155,12 +168,16 @@ class Window(tk.Tk):
                     print("Added new detail: ", repr(self.details[-1]))
 
                 case "move":
+                    to_move = query[1:-1]
                     for obj in self.details:
-                        if obj.name == query[1]:
-                            obj.move(float(query[2]))
-                            break
-                    else:
-                        print("No detail with this name")
+                        if obj.name in to_move:
+                            obj.move(float(query[-1]))
+                            to_move.remove(obj.name)
+                    if len(to_move) != 0:
+                        print("Details not found: ", end="")
+                        for i in range(len(to_move)):
+                            print(to_move[i], end=(i != len(to_move) - 1) * "," + " ")
+                        print()
 
                 case "move_to":
                     for obj in self.details:
@@ -196,20 +213,22 @@ class Window(tk.Tk):
                         print('\t' + repr(obj))
 
                 case "save":
-                    with open(query[1], "wb") as file:
+                    with open('files/' + query[1], "wb") as file:
                         pickle.dump(self.details, file)
 
                 case "load":
-                    with open(query[1], "rb") as file:
+                    with open('files/' + query[1], "rb") as file:
                         self.details = pickle.load(file)
 
                 case "remove":
+                    to_remove = query[1:]
                     for i, obj in enumerate(self.details):
-                        if obj.name == query[1]:
+                        if obj.name in to_remove:
                             print("Removed", self.details.pop(i).name)
-                            break
-                    else:
-                        print("No detail with this name")
+                    if len(to_remove) != 0:
+                        print("No details with such names: ", end="")
+                        for i in range(len(to_remove)):
+                            print(to_remove[i], end=(i != len(to_remove) - 1) * "," + " ")
 
                 case "edit":
                     for obj in self.details:
@@ -292,7 +311,32 @@ class Window(tk.Tk):
                 case "calculate":
                     calculate(self.details)
 
+                case "dist":
+                    edges = list()
+                    for det in self.details:
+                        if det.name == query[2]:
+                            if query[1] == 'l':
+                                edges.append(det.pos)
+                            elif query[1] == 'r':
+                                edges.append(det.pos + det.length)
+                            else:
+                                print("Invalid arguments")
+                                return
+                        if det.name == query[4]:
+                            if query[3] == 'l':
+                                edges.append(det.pos)
+                            elif query[3] == 'r':
+                                edges.append(det.pos + det.length)
+                            else:
+                                print("Invalid arguments")
+                                return
+                    if len(edges) == 2:
+                        print("Distance =", abs(edges[0] - edges[1]))
+
+
         except IndexError:
             print("Not enough arguments")
         except ValueError:
             print("Invalid inputs (probably not a float-type)")
+        except FileNotFoundError:
+            print("No such file")
