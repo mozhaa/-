@@ -15,14 +15,15 @@ from Detail import Detail
 class Window(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("model")
+        self.title("PenSpin Calculate")
+        icofp = os.path.join(os.path.dirname(__file__), "icon.ico")
+        self.iconbitmap(icofp)
         self.details = list()
         self.doc = '''
     Commands:
         - help
         - add <имя> <масса> <длина> [цвет]
-        - addlist <название> <имя>
-        - move <имя> <изменение>
+        - move <имя> <расстояние>
         - move_to <имя> <позиция>
         - rename <старое имя> <новое имя>
         - copy <имя1> <имя2>
@@ -31,17 +32,18 @@ class Window(tk.Tk):
         - select <имя>
         - deselect
         - remove <имя>
+        - listed load <название> <имя> [цвет]
+        - listed print
+        - listed show <название>
+        - listed save <имя> [название]
+        - listed remove <название>
         - print <имя>
         - dist <l/r> <имя1> <l/r> <имя2>
         - list
         - calculate
         - save <название файла>
         - load <название файла>
-        - listed print
-        - listed show <название>
-        - listed save <имя> [название]
-        - listed remove <название>
-        - listed load <название> <имя> [цвет]
+        - exit
 '''
 
         self.colors = dict()
@@ -57,10 +59,20 @@ class Window(tk.Tk):
         self.entry.grid(row=0, column=0)
 
         self.button = tk.Button(self, text="O", command=self.button_click, background='#CCE5FF')
-        self.button.bind("<Left>", self.move_left)
-        self.button.bind("<a>", self.move_left)
-        self.button.bind("<Right>", self.move_right)
-        self.button.bind("<d>", self.move_right)
+        self.button.bind("<Left>", self.normal_move_left)
+        self.button.bind("<a>", self.normal_move_left)
+        self.button.bind("<Control-Left>", self.sticked_move_left)
+        self.button.bind("<Control-a>", self.sticked_move_left)
+        self.button.bind("<Shift-Left>", self.short_move_left)
+        self.button.bind("<A>", self.short_move_left)
+
+        self.button.bind("<Right>", self.normal_move_right)
+        self.button.bind("<d>", self.normal_move_right)
+        self.button.bind("<Control-Right>", self.sticked_move_right)
+        self.button.bind("<Control-d>", self.sticked_move_right)
+        self.button.bind("<Shift-Right>", self.short_move_right)
+        self.button.bind("<D>", self.short_move_right)
+
         self.button.bind("<F1>", lambda *args: self.entry.focus_set())
         self.button.bind("<FocusIn>", lambda *args: self.button.config(background='#3399FF'))
         self.button.bind("<FocusOut>", lambda *args: self.button.config(background='#CCE5FF'))
@@ -71,10 +83,11 @@ class Window(tk.Tk):
 
         os.makedirs('files', exist_ok=True)
         self.entry.focus_set()
+        self.show_details()
         self.mainloop()
 
 
-    def move_left(self, *args):
+    def sticked_move_left(self, *args):
         if self.selected == None:
             return
         edges = list()
@@ -84,10 +97,9 @@ class Window(tk.Tk):
         edges = sorted(list(set(edges)))
         index = bisect.bisect_left(edges, self.selected.pos - 0.000000000001) - 1
         if index == -1: return
-        self.run_query(("move_to", self.selected.name, edges[index]))
-        self.show_details()
+        self.internal_run(("move_to", self.selected.name, str(edges[index])))
 
-    def move_right(self, *args):
+    def sticked_move_right(self, *args):
         if self.selected == None:
             return
         edges = list()
@@ -95,12 +107,34 @@ class Window(tk.Tk):
             if det.name != self.selected.name:
                 edges.extend([det.pos, det.pos + det.length, det.pos + self.selected.length, det.pos + det.length + self.selected.length])
         edges = sorted(list(set(edges)))
-        # print(edges, self.selected.pos + self.selected.length)
         index = bisect.bisect_right(edges, self.selected.pos + self.selected.length + 0.000000000001)
         if index == len(edges): return
-        self.run_query(("move_to", self.selected.name, edges[index] - self.selected.length))
-        self.show_details()
+        self.internal_run(("move_to", self.selected.name, str(edges[index] - self.selected.length)))
 
+    def short_move_left(self, *args):
+        if self.selected == None:
+            return
+        self.internal_run(("move", self.selected.name, "-0.1"))
+
+    def short_move_right(self, *args):
+        if self.selected == None:
+            return
+        self.internal_run(("move", self.selected.name, "0.1"))
+
+    def normal_move_left(self, *args):
+        if self.selected == None:
+            return
+        self.internal_run(("move", self.selected.name, "-1"))
+
+    def normal_move_right(self, *args):
+        if self.selected == None:
+            return
+        self.internal_run(("move", self.selected.name, "1"))
+
+    def internal_run(self, query, update=True):
+        self.run_query(query, internal=True)
+        if update:
+            self.show_details()
 
     def create_rectangle(self, x1, y1, x2, y2, **kwargs):
         if 'alpha' in kwargs:
@@ -159,13 +193,18 @@ class Window(tk.Tk):
             print("Invalid color option")
             return False
 
-    def run_query(self, query):
+    def run_query(self, query, internal=False):
+        if not internal:
+            print(f'[Command] {" ".join(query)}')
         try:
             match query[0]:
                 case "help":
                     print(self.doc)
 
                 case "add":
+                    if query[1] in [det.name for det in self.details]:
+                        print("This name is already in use")
+                        return
                     self.details.append(Detail(name=query[1], mass=float(query[2]), length=float(query[3])))
                     if len(query) > 4:
                         color = Window.parse_color(query[4])
@@ -174,10 +213,13 @@ class Window(tk.Tk):
                     print("Added new detail: ", repr(self.details[-1]))
 
                 case "move":
-                    to_move = query[1:-1]
+                    to_move = list(query[1:-1])
                     for obj in self.details:
                         if obj.name in to_move:
-                            obj.move(float(query[-1]))
+                            if query[-1] == "center":
+                                obj.move_to(-obj.length/2)
+                            else:
+                                obj.move(float(query[-1]))
                             to_move.remove(obj.name)
                     if len(to_move) != 0:
                         print("Details not found: ", end="")
@@ -188,7 +230,10 @@ class Window(tk.Tk):
                 case "move_to":
                     for obj in self.details:
                         if obj.name == query[1]:
-                            obj.move_to(float(query[2]))
+                            if query[2] == "center":
+                                obj.move_to(-obj.length/2)
+                            else:
+                                obj.move_to(float(query[2]))
                             break
                     else:
                         print("No detail with this name")
@@ -269,6 +314,9 @@ class Window(tk.Tk):
                     self.selected = None
 
                 case "addlist":
+                    if query[2] in [det.name for det in self.details]:
+                        print("This name is already in use")
+                        return
                     with open("listed.json", "r") as file:
                         listed_details = json.load(file)
                     for det in listed_details:
@@ -276,9 +324,9 @@ class Window(tk.Tk):
                             if len(query) > 3:
                                 color = Window.parse_color(query[3])
                                 if color != False:
-                                    self.run_query(("add", query[2], det["mass" ], det["length"], color))
+                                    self.internal_run(("add", query[2], det["mass" ], det["length"], color))
                             else:
-                                self.run_query(("add", query[2], det["mass"], det["length"]))
+                                self.internal_run(("add", query[2], det["mass"], det["length"]))
                             break
                     else:
                         print("No detail in listed file with this name")
@@ -299,20 +347,26 @@ class Window(tk.Tk):
                                 name1, name2 = query[3], query[4]
                             else:
                                 name1, name2 = det.name + '1', det.name + '2'
-                            self.run_query(("add", name1, det.mass*ratioa, det.length*ratioa, self.colors[det.name]))
-                            self.run_query(("add", name2, det.mass*ratiob, det.length*ratiob, self.colors[det.name]))
-                            self.run_query(("move_to", name1, det.pos))
-                            self.run_query(("move_to", name2, det.pos + det.length*ratioa))
-                            self.run_query(("remove", det.name))
+                            if name1 in [det.name for det in self.details] or name2 in [det.name for det in self.details]:
+                                print("This name is already in use")
+                                return
+                            self.internal_run(("add", name1, det.mass*ratioa, det.length*ratioa, self.colors[det.name]), update=False)
+                            self.internal_run(("add", name2, det.mass*ratiob, det.length*ratiob, self.colors[det.name]), update=False)
+                            self.internal_run(("move_to", name1, det.pos), update=False)
+                            self.internal_run(("move_to", name2, det.pos + det.length*ratioa), update=False)
+                            self.internal_run(("remove", det.name))
                             break
                     else:
                         print("No detail with such name")
 
                 case "copy":
+                    if query[2] in [det.name for det in self.details]:
+                        print("This name is already in use")
+                        return
                     for det in self.details:
                         if det.name == query[1]:
-                            self.run_query(("add", query[2], det.mass, det.length, self.colors[det.name]))
-                            self.run_query(("move_to", query[2], det.pos))
+                            self.run_query(("add", query[2], det.mass, det.length, self.colors[det.name]), internal=True)
+                            self.run_query(("move_to", query[2], det.pos), internal=True)
                             break
                     else:
                         print("No detail with this name")
@@ -386,17 +440,25 @@ class Window(tk.Tk):
                         else:
                             print("No detail with this name")
                     if query[1] == "load":
+                        if query[3] in [det.name for det in self.details]:
+                            print("This name is already in use")
+                            return
                         for det in listed_details:
                             if det["name"].lower() == query[2].lower():
                                 if len(query) > 4:
                                     color = Window.parse_color(query[4])
                                     if color != False:
-                                        self.run_query(("add", query[3], det["mass" ], det["length"], color))
+                                        self.run_query(("add", query[3], det["mass" ], det["length"], color), internal=True)
                                 else:
-                                    self.run_query(("add", query[3], det["mass"], det["length"]))
+                                    self.run_query(("add", query[3], det["mass"], det["length"]), internal=True)
                                 break
                         else:
                             print("No detail in listed file with this name")
+
+                case "clear":
+                    self.details = list()
+                    self.colors = list()
+                    self.show_details()
 
                 case "exit":
                     self.destroy()
