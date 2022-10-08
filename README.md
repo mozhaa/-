@@ -4,7 +4,7 @@
 
 ## Где скачать
 
-Можете скачать **всю** папку например [тут](https://drive.google.com/drive/folders/1KhLBx6Muxj3hVwqZAvNz8T1gQVk8ChF5?usp=sharing) или может быть [здесь](https://disk.yandex.ru/d/Hiaux1cB3CVJtg), либо скачать папку *compiled version* из этого репозитория. Тогда вам остается просто запустить 
+Можете скачать например [тут](https://drive.google.com/drive/folders/1KhLBx6Muxj3hVwqZAvNz8T1gQVk8ChF5?usp=sharing) или может быть [здесь](https://disk.yandex.ru/d/Hiaux1cB3CVJtg), либо скачать папку *compiled version* из этого репозитория. Тогда вам остается просто запустить 
 файл `PenSpinCalculate.exe`. Если ничего из этих ссылок не работает, можете написать [мне](https://vk.com/mozhaa).
 
 *Либо вы можете склонировать этот репозиторий и запустить main.py, но для этого вам понадобится Python как минимум версии 3.10 и, возможно, ещё какие-то библиотеки.*
